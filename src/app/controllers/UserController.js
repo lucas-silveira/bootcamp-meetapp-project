@@ -1,7 +1,23 @@
 import * as Yup from 'yup';
 import User from '../models/UserModel';
+import File from '../models/FileModel';
 
 class UserController {
+  async index(req, res) {
+    const users = await User.findAll({
+      attributes: ['id', 'name', 'email', 'avatar_id'],
+      include: [
+        {
+          model: File,
+          as: 'avatar',
+          attributes: ['name', 'path', 'url'],
+        },
+      ],
+    });
+
+    return res.json(users);
+  }
+
   async store(req, res) {
     const schema = Yup.object().shape({
       name: Yup.string().required(),
@@ -52,7 +68,7 @@ class UserController {
 
     const user = await User.findByPk(req.userId);
 
-    if (email != user.email) {
+    if (email && email != user.email) {
       const userExists = await User.findOne({ where: { email } });
 
       if (userExists)
@@ -62,12 +78,12 @@ class UserController {
     if (oldPassword && !(await user.checkPassword(oldPassword)))
       return res.status(401).json({ error: 'Password does no match' });
 
-    const { id, name } = await user.update(req.body);
+    const { id, name, email: userEmail } = await user.update(req.body);
 
     return res.json({
       id,
       name,
-      email,
+      email: userEmail,
     });
   }
 }
